@@ -1,0 +1,29 @@
+# node
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# env
+.env
+.env.local
+.env.*.local
+
+# data
+*.sqlite
+*.sqlite-journal
+*.db
+storage/
+models/
+
+# editor
+.vscode/
+.idea/
+.DS_Store

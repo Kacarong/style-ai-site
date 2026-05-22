@@ -1,0 +1,15 @@
+[Unit]
+Description=style-ai-site Next.js server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/style-ai-site/server
+EnvironmentFile=/opt/style-ai-site/server/.env
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

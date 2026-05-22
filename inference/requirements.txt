@@ -1,0 +1,8 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-multipart>=0.0.12
+pydantic>=2.9.0
+pydantic-settings>=2.6.0
+pillow>=10.4.0
+# torch is installed separately per the README (cu128 wheel).
+# fal-client>=0.5.0  # optional fallback provider
