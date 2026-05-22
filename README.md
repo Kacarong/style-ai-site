@@ -72,20 +72,23 @@ sudo apt install -y nodejs npm
 curl -fsSL https://tailscale.com/install.sh | sh
 sudo tailscale up
 
-# deploy
-git clone https://github.com/Kacarong/style-ai-site.git
-cd style-ai-site/server
-cp .env.example .env
-# edit .env:
+# deploy — the systemd units assume the repo lives at /opt/style-ai-site,
+# so clone it there directly.
+sudo git clone https://github.com/Kacarong/style-ai-site.git /opt/style-ai-site
+cd /opt/style-ai-site/server
+sudo cp .env.example .env
+sudo $EDITOR .env
+# .env values:
 #   SHARED_SECRET=<openssl rand -base64 48>
 #   INFERENCE_BASE_URL=http://<your-PC-tailnet-ip>:8000
 #   HOSTNAME=<this-server-tailnet-ip>
-npm install
-npm run build
+sudo npm install
+sudo npm run build
 
-# systemd unit (see deploy/style-ai-site.service)
-sudo cp deploy/style-ai-site.service /etc/systemd/system/
-sudo cp deploy/style-ai-site-worker.service /etc/systemd/system/
+# systemd units
+sudo cp /opt/style-ai-site/deploy/style-ai-site.service /etc/systemd/system/
+sudo cp /opt/style-ai-site/deploy/style-ai-site-worker.service /etc/systemd/system/
+sudo systemctl daemon-reload
 sudo systemctl enable --now style-ai-site style-ai-site-worker
 ```
 

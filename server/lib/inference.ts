@@ -1,7 +1,14 @@
-// Server-only client for the inference FastAPI service.
-// Uses Bearer SHARED_SECRET. Never importable from client components.
+// Client for the inference FastAPI service. Imported from:
+//   - Next.js server components / route handlers (server side of Next process)
+//   - server/worker.ts (separate Node process)
+// Must NOT be imported from a "use client" component. The SHARED_SECRET it
+// reads via env.ts is server-only and is never sent to the browser.
+//
+// We don't use the `server-only` npm package because it throws in any plain
+// Node process (the worker), not just in client bundles. The same guarantee
+// is enforced by: env.ts reads SHARED_SECRET (no NEXT_PUBLIC_), and this file
+// is never reachable from a "use client" tree.
 
-import 'server-only';
 import { env } from './env';
 
 function authHeaders(): Record<string, string> {
