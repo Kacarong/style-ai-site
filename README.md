@@ -67,8 +67,14 @@ Both machines must be on the same Tailscale tailnet. The site listens on the tai
 ### Friend's Linux server (Ubuntu/Debian)
 
 ```bash
-# install Node 20, Tailscale
-sudo apt install -y nodejs npm
+# install Node 20 (NodeSource — the Ubuntu/Debian default repo doesn't
+# guarantee 20, and Next 15 requires it)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v   # should print v20.x
+npm -v
+
+# install Tailscale
 curl -fsSL https://tailscale.com/install.sh | sh
 sudo tailscale up
 
@@ -82,7 +88,7 @@ sudo $EDITOR .env
 #   SHARED_SECRET=<openssl rand -base64 48>
 #   INFERENCE_BASE_URL=http://<your-PC-tailnet-ip>:8000
 #   HOSTNAME=<this-server-tailnet-ip>
-sudo npm install
+sudo npm ci         # reproducible install from package-lock.json
 sudo npm run build
 
 # systemd units
