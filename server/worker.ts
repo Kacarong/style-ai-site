@@ -4,7 +4,7 @@
 // Why a separate process: Next.js dev/prod can restart freely; a setInterval
 // in the Next.js process would double-run on HMR and stop on rebuild.
 
-import { db } from './lib/db';
+import { db, setMeta } from './lib/db';
 import { runTryon } from './lib/inference';
 
 const POLL_INTERVAL_MS = 2000;
@@ -17,6 +17,8 @@ interface QueuedGeneration {
 
 async function tick() {
   const d = db();
+  // Heartbeat: write our timestamp every tick so the UI can detect "worker not running".
+  setMeta('worker_heartbeat_at', String(Date.now()));
 
   const row = d.prepare(`
     SELECT g.id AS id, p.image_url AS person_url, ga.image_url AS garment_url

@@ -44,5 +44,25 @@ function migrate(d: Database.Database) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_generations_status ON generations(status, created_at);
+
+    CREATE TABLE IF NOT EXISTS meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
   `);
+}
+
+export function setMeta(key: string, value: string) {
+  db().prepare(`
+    INSERT INTO meta (key, value, updated_at) VALUES (?, ?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+  `).run(key, value, Date.now());
+}
+
+export function getMeta(key: string): { value: string; updated_at: number } | null {
+  const row = db().prepare('SELECT value, updated_at FROM meta WHERE key = ?').get(key) as
+    | { value: string; updated_at: number }
+    | undefined;
+  return row ?? null;
 }
