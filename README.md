@@ -45,8 +45,10 @@ pip install -r requirements.txt
 copy .env.example .env
 # edit .env: SHARED_SECRET must match server/.env.local
 # PROVIDER=mock to start
-uvicorn app.main:app --host 127.0.0.1 --port 8000
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
+
+Run uvicorn with `python -m uvicorn`, not bare `uvicorn`. On Windows, the bare command resolves through PATH and may pick the system Python's `uvicorn.exe` even when `.venv` is activated — your venv's torch/fashn install will then be invisible (`ModuleNotFoundError: No module named 'torch'` at first FASHN call). `python -m uvicorn` is unambiguous: the venv's interpreter loads everything.
 
 Open http://localhost:3000 and try the upload → compose → poll cycle with `PROVIDER=mock`. The mock provider returns a side-by-side composite of the person and garment (no model work) — useful to verify the upload → queue → worker → result wiring before you set up the real GPU model.
 
@@ -126,7 +128,7 @@ sudo systemctl enable --now style-ai-site style-ai-site-worker
 - Inference setup (same as local dev above) but:
   - Set `SHARED_SECRET` in `inference/.env` to the same value as the server.
   - Set `STORAGE_PUBLIC_BASE_URL=http://<your-PC-tailnet-ip>:8000`. With the `/api/image` proxy the browser never hits this URL directly — the friend's server uses it to fetch image bytes over the tailnet and streams them back same-origin.
-  - Bind to your tailnet IP: `uvicorn app.main:app --host <your-PC-tailnet-ip> --port 8000`.
+  - Bind to your tailnet IP: `python -m uvicorn app.main:app --host <your-PC-tailnet-ip> --port 8000`.
 - Register as a Windows service with NSSM so it starts on boot:
   ```powershell
   nssm install StyleAI-Inference "C:\path\to\.venv\Scripts\python.exe" "-m" "uvicorn" "app.main:app" "--host" "<tailnet-ip>" "--port" "8000"
