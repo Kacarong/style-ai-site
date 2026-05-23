@@ -1,21 +1,20 @@
 """FASHN VTON v1.5 provider (open-source local model).
 
-Reference:
-  - https://huggingface.co/fashn-ai/fashn-vton-1.5
-  - https://github.com/fashn-AI/fashn-vton-1.5
+API surface mirrors examples/basic_inference.py in the upstream repo:
+  https://github.com/fashn-AI/fashn-vton-1.5/blob/main/examples/basic_inference.py
 
-Setup on the host (one-time):
-  git clone https://github.com/fashn-AI/fashn-vton-1.5.git
-  cd fashn-vton-1.5
-  pip install -e .
-  python scripts/download_weights.py --weights-dir ./weights
+  from fashn_vton import TryOnPipeline
+  pipeline = TryOnPipeline(weights_dir=..., device="cuda")
+  result = pipeline(
+      person_image=PIL, garment_image=PIL,
+      category="tops"|"bottoms"|"one-pieces",
+      garment_photo_type="model"|"flat-lay",
+      num_samples=1, num_timesteps=30, guidance_scale=1.5,
+      seed=42, segmentation_free=True,
+  )
+  result.images[0]  # PIL.Image
 
-Then set in inference/.env:
-  PROVIDER=fashn_vton_v15
-  FASHN_WEIGHTS_DIR=C:\\path\\to\\fashn-vton-1.5\\weights
-
-GPU: ~8GB VRAM, bfloat16 on Ampere+ (RTX 30/40/50 series).
-Torch wheel: cu128 for Blackwell sm_120 (RTX 50-series).
+GPU: ~8GB VRAM. Torch wheel: cu128 for Blackwell sm_120 (RTX 50-series).
 """
 
 import io
@@ -78,13 +77,12 @@ def _load_pipeline() -> Any:
                 "`python scripts/download_weights.py --weights-dir ./weights` "
                 "in the fashn-vton-1.5 repo and set FASHN_WEIGHTS_DIR in inference/.env."
             )
-        # bfloat16 on Ampere+ (sm_80+). 5070 Ti is Blackwell sm_120 → supported.
-        dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        _pipeline = TryOnPipeline.from_pretrained(
-            weights_dir,
-            torch_dtype=dtype,
-        ).to(device)
+        # Constructor signature per upstream examples/basic_inference.py:
+        #   TryOnPipeline(weights_dir=..., device=...)
+        # No from_pretrained(), no .to(), no torch_dtype kwarg. dtype handling
+        # is internal to the pipeline.
+        _pipeline = TryOnPipeline(weights_dir=weights_dir, device=device)
         return _pipeline
 
 
@@ -102,6 +100,8 @@ class FashnVtonV15Provider(Provider):
             person_image=person_img,
             garment_image=garment_img,
             category=category,
+            garment_photo_type=settings.fashn_garment_photo_type,
+            num_samples=1,
             num_timesteps=settings.fashn_num_timesteps,
             guidance_scale=settings.fashn_guidance_scale,
             seed=settings.fashn_seed,

@@ -6,14 +6,14 @@ Personal-use virtual try-on. Upload a person photo + a garment photo, get a comp
 
 Two processes:
 
-- `server/` — Next.js site (App Router + SQLite). Stores metadata + job queue only. **Never stores image bytes.**
+- `server/` — Next.js site (App Router + SQLite). Stores metadata + job queue only. **Never stores image bytes** — when the browser requests an image, the site fetches it from inference and streams it through; bytes never hit disk on the site server.
 - `inference/` — Python FastAPI. Stores image bytes, serves them via signed read URLs, runs try-on inference.
 
-The site talks to inference over HTTP with a Bearer `SHARED_SECRET`. Browsers read images directly from inference via signed read URLs (`?t=<token>`).
+The site talks to inference over HTTP with a Bearer `SHARED_SECRET`. The browser only talks to the site (same-origin) — image requests are proxied at `/api/image/<id>?t=<token>` so the browser never needs the inference host to be reachable.
 
 ```
-browser ──(HTTP)──> server (Next.js) ──(Bearer)──> inference (FastAPI) ──> GPU
-   └──(signed URL)────────────────────────────────────^ image bytes
+browser ──(same-origin)──> server (Next.js) ──(Bearer + signed URL)──> inference (FastAPI) ──> GPU
+              /api/image/<id>?t=<token>  ──proxy stream──>  /storage/<id>?t=<token>
 ```
 
 ## Local development (both processes on your Windows PC, localhost)
@@ -26,7 +26,10 @@ This is the recommended way to test end-to-end before deploying.
 cd server
 cp .env.example .env.local
 # edit .env.local: set SHARED_SECRET to anything for dev (e.g. "dev-secret"),
-# set INFERENCE_BASE_URL=http://localhost:8000
+# set INFERENCE_BASE_URL=http://127.0.0.1:8000
+# (use 127.0.0.1, NOT localhost — on Windows, Node 20's fetch resolves
+#  "localhost" to IPv6 ::1 but uvicorn binds IPv4 only, so the inference
+#  badge stays "오프라인" even though curl works.)
 npm install
 npm run dev          # terminal 1 — Next.js on http://localhost:3000
 npm run worker       # terminal 2 — queue worker
@@ -122,7 +125,7 @@ sudo systemctl enable --now style-ai-site style-ai-site-worker
 - Install Python 3.11.
 - Inference setup (same as local dev above) but:
   - Set `SHARED_SECRET` in `inference/.env` to the same value as the server.
-  - Set `STORAGE_PUBLIC_BASE_URL=http://<your-PC-tailnet-ip>:8000` so signed URLs use the tailnet hostname.
+  - Set `STORAGE_PUBLIC_BASE_URL=http://<your-PC-tailnet-ip>:8000`. With the `/api/image` proxy the browser never hits this URL directly — the friend's server uses it to fetch image bytes over the tailnet and streams them back same-origin.
   - Bind to your tailnet IP: `uvicorn app.main:app --host <your-PC-tailnet-ip> --port 8000`.
 - Register as a Windows service with NSSM so it starts on boot:
   ```powershell
@@ -143,6 +146,6 @@ Both are non-trivial. Skip until MVP works.
 ## Security notes
 
 - `SHARED_SECRET` is **server-to-inference only**. Never put it in `NEXT_PUBLIC_*`, never send to the browser.
-- `/storage/<id>` uses signed read tokens (in the URL) instead of Bearer, so `<img src>` works.
-- Image bytes never touch the friend's server.
+- `/storage/<id>` uses signed read tokens (in the URL) instead of Bearer, so the site server can fetch images without a header.
+- The friend's server streams image bytes through (`/api/image` proxy) but **never stores them on disk**. Only metadata (URLs, statuses) lives in SQLite there.
 - Tailscale is the access control. No additional password.
