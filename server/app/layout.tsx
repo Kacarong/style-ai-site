@@ -1,14 +1,14 @@
+import './globals.css';
+
 export const metadata = {
   title: 'style-ai-site',
-  description: 'Personal virtual try-on',
+  description: '개인용 가상 피팅',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body style={{ fontFamily: 'system-ui, sans-serif', margin: 0, padding: 24 }}>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

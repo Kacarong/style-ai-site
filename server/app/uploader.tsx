@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { toProxyImageUrl } from '@/lib/image-url';
 import { compose, uploadGarment, uploadPerson } from './actions';
 
 export interface PersonLite {
@@ -55,6 +56,8 @@ export default function Uploader({
 
   // ---- compose + polling ----
   const [composeState, composeAction, composePending] = useActionState(compose, { ok: false });
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [selectedGarmentId, setSelectedGarmentId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [status, setStatus] = useState<GenStatus | null>(null);
 
@@ -78,7 +81,7 @@ export default function Uploader({
         setStatus(data);
         if (data.status === 'done' || data.status === 'failed') {
           router.refresh();
-          return; // stop polling
+          return;
         }
         setTimeout(poll, POLL_MS);
       } catch {
@@ -91,83 +94,94 @@ export default function Uploader({
     };
   }, [activeId, router]);
 
+  const canCompose = selectedPersonId !== null && selectedGarmentId !== null;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <section style={card}>
-        <h3 style={{ marginTop: 0 }}>Upload person</h3>
+    <div className="stack">
+      <section className="card">
+        <h3>사람 사진 업로드</h3>
         <form ref={personFormRef} action={personAction}>
-          <input type="file" name="file" accept="image/jpeg,image/png,image/webp" required />
-          <input type="text" name="label" placeholder="label (optional)" style={{ marginLeft: 8 }} />
-          <button type="submit" disabled={personPending} style={{ marginLeft: 8 }}>
-            {personPending ? 'uploading…' : 'upload'}
-          </button>
+          <div className="row">
+            <input type="file" name="file" accept="image/jpeg,image/png,image/webp" required />
+            <input type="text" name="label" placeholder="이름표 (선택)" />
+            <button type="submit" className="primary" disabled={personPending}>
+              {personPending ? '업로드 중…' : '업로드'}
+            </button>
+          </div>
         </form>
-        {personState.error && <p style={errorStyle}>{personState.error}</p>}
+        {personState.error && <p className="error">{personState.error}</p>}
       </section>
 
-      <section style={card}>
-        <h3 style={{ marginTop: 0 }}>Upload garment</h3>
+      <section className="card">
+        <h3>옷 사진 업로드</h3>
         <form ref={garmentFormRef} action={garmentAction}>
-          <input type="file" name="file" accept="image/jpeg,image/png,image/webp" required />
-          <input type="text" name="category" placeholder="category (e.g. top)" style={{ marginLeft: 8 }} />
-          <input type="text" name="note" placeholder="note (optional)" style={{ marginLeft: 8 }} />
-          <button type="submit" disabled={garmentPending} style={{ marginLeft: 8 }}>
-            {garmentPending ? 'uploading…' : 'upload'}
-          </button>
+          <div className="row">
+            <input type="file" name="file" accept="image/jpeg,image/png,image/webp" required />
+            <input type="text" name="category" placeholder="카테고리 (예: 상의)" />
+            <input type="text" name="note" placeholder="메모 (선택)" />
+            <button type="submit" className="primary" disabled={garmentPending}>
+              {garmentPending ? '업로드 중…' : '업로드'}
+            </button>
+          </div>
         </form>
-        {garmentState.error && <p style={errorStyle}>{garmentState.error}</p>}
+        {garmentState.error && <p className="error">{garmentState.error}</p>}
       </section>
 
-      <section style={card}>
-        <h3 style={{ marginTop: 0 }}>Compose</h3>
+      <section className="card">
+        <h3>합성하기</h3>
         {people.length === 0 || garments.length === 0 ? (
-          <p style={mutedStyle}>upload at least one person and one garment to compose.</p>
+          <p className="muted">사람 사진과 옷 사진을 각각 1장 이상 먼저 올려주세요.</p>
         ) : (
           <form action={composeAction}>
-            <label>
-              person:&nbsp;
-              <select name="person_id" required defaultValue="">
-                <option value="" disabled>— select —</option>
-                {people.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.label || p.id.slice(0, 8)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            &nbsp;&nbsp;
-            <label>
-              garment:&nbsp;
-              <select name="garment_id" required defaultValue="">
-                <option value="" disabled>— select —</option>
-                {garments.map(g => (
-                  <option key={g.id} value={g.id}>
-                    {g.category || g.id.slice(0, 8)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="submit" disabled={composePending} style={{ marginLeft: 12 }}>
-              {composePending ? 'queuing…' : 'compose'}
+            <input type="hidden" name="person_id" value={selectedPersonId ?? ''} />
+            <input type="hidden" name="garment_id" value={selectedGarmentId ?? ''} />
+
+            <div style={{ marginBottom: 16 }}>
+              <div className="picker-label">사람 선택</div>
+              <CardPicker
+                items={people.map(p => ({
+                  id: p.id,
+                  url: toProxyImageUrl(p.image_url),
+                  label: p.label,
+                }))}
+                selectedId={selectedPersonId}
+                onSelect={setSelectedPersonId}
+                emptyText="등록된 사람 없음"
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <div className="picker-label">옷 선택</div>
+              <CardPicker
+                items={garments.map(g => ({
+                  id: g.id,
+                  url: toProxyImageUrl(g.image_url),
+                  label: g.category,
+                }))}
+                selectedId={selectedGarmentId}
+                onSelect={setSelectedGarmentId}
+                emptyText="등록된 옷 없음"
+              />
+            </div>
+
+            <button type="submit" className="primary" disabled={composePending || !canCompose}>
+              {composePending ? '대기열에 추가 중…' : '합성 시작'}
             </button>
           </form>
         )}
-        {composeState.error && <p style={errorStyle}>{composeState.error}</p>}
+        {composeState.error && <p className="error">{composeState.error}</p>}
 
         {activeId && (
-          <div style={{ marginTop: 12 }}>
-            <p style={{ margin: 0 }}>
-              generation <code>{activeId.slice(0, 8)}</code>: <strong>{status?.status ?? 'queued'}</strong>
+          <div className="gen-status">
+            <p>
+              합성 작업 <code>{activeId.slice(0, 8)}</code>
+              <StatusPill status={status?.status ?? 'queued'} />
             </p>
             {status?.status === 'failed' && status.error_message && (
-              <p style={errorStyle}>{status.error_message}</p>
+              <p className="error">{status.error_message}</p>
             )}
             {status?.status === 'done' && status.result_url && (
-              <img
-                src={status.result_url}
-                alt="result"
-                style={{ marginTop: 8, maxWidth: '100%', maxHeight: 480 }}
-              />
+              <img src={toProxyImageUrl(status.result_url)} alt="합성 결과" />
             )}
           </div>
         )}
@@ -176,10 +190,37 @@ export default function Uploader({
   );
 }
 
-const card: React.CSSProperties = {
-  border: '1px solid #ddd',
-  borderRadius: 8,
-  padding: 16,
-};
-const errorStyle: React.CSSProperties = { color: 'crimson', marginTop: 8 };
-const mutedStyle: React.CSSProperties = { color: '#888', marginTop: 0 };
+function CardPicker({
+  items,
+  selectedId,
+  onSelect,
+  emptyText,
+}: {
+  items: Array<{ id: string; url: string; label: string | null }>;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  emptyText: string;
+}) {
+  if (items.length === 0) return <p className="picker-empty">{emptyText}</p>;
+  return (
+    <div className="picker-grid">
+      {items.map(it => (
+        <button
+          type="button"
+          key={it.id}
+          className={`picker-card ${selectedId === it.id ? 'selected' : ''}`}
+          onClick={() => onSelect(it.id)}
+          aria-pressed={selectedId === it.id}
+        >
+          <img src={it.url} alt={it.label ?? ''} />
+          <div className="picker-card-label">{it.label || '(이름 없음)'}</div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function StatusPill({ status }: { status: 'queued' | 'running' | 'done' | 'failed' }) {
+  const text = { queued: '대기', running: '처리중', done: '완료', failed: '실패' }[status];
+  return <span className={`status-pill status-${status}`}>{text}</span>;
+}

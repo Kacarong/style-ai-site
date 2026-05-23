@@ -4,6 +4,16 @@
 // Why a separate process: Next.js dev/prod can restart freely; a setInterval
 // in the Next.js process would double-run on HMR and stop on rebuild.
 
+// Next.js auto-loads .env / .env.local but plain Node (tsx) does not.
+// Load them ourselves so env.ts can read INFERENCE_BASE_URL etc.
+// Order matches Next.js: .env first, then .env.local overrides.
+import { existsSync } from 'node:fs';
+for (const name of ['.env', '.env.local']) {
+  if (existsSync(name)) {
+    try { process.loadEnvFile(name); } catch { /* requires Node 20.12+ */ }
+  }
+}
+
 import { db, setMeta } from './lib/db';
 import { runTryon } from './lib/inference';
 

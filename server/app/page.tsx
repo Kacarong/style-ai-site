@@ -1,4 +1,5 @@
 import { db, getMeta } from '@/lib/db';
+import { toProxyImageUrl } from '@/lib/image-url';
 import { inferenceHealth } from '@/lib/inference';
 import Uploader, { GarmentLite, PersonLite } from './uploader';
 
@@ -20,73 +21,103 @@ export default async function Home() {
   const online = await inferenceHealth();
   const d = db();
 
-  const people = d.prepare(
-    'SELECT id, image_url, label FROM people ORDER BY created_at DESC LIMIT 24',
-  ).all() as PersonLite[];
-  const garments = d.prepare(
-    'SELECT id, image_url, category FROM garments ORDER BY created_at DESC LIMIT 24',
-  ).all() as GarmentLite[];
-  const generations = d.prepare(
-    'SELECT id, person_id, garment_id, result_url, status, error_message, created_at FROM generations ORDER BY created_at DESC LIMIT 24',
-  ).all() as GenerationRow[];
+  const people = d
+    .prepare('SELECT id, image_url, label FROM people ORDER BY created_at DESC LIMIT 24')
+    .all() as PersonLite[];
+  const garments = d
+    .prepare(
+      'SELECT id, image_url, category FROM garments ORDER BY created_at DESC LIMIT 24',
+    )
+    .all() as GarmentLite[];
+  const generations = d
+    .prepare(
+      'SELECT id, person_id, garment_id, result_url, status, error_message, created_at FROM generations ORDER BY created_at DESC LIMIT 24',
+    )
+    .all() as GenerationRow[];
 
   const hb = getMeta('worker_heartbeat_at');
   const hbAge = hb ? Date.now() - Number(hb.value) : null;
   const workerLive = hbAge !== null && hbAge < WORKER_STALE_MS;
 
   return (
-    <main style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <h1 style={{ marginBottom: 8 }}>style-ai-site</h1>
+    <main>
+      <h1>style-ai-site</h1>
+      <p className="muted" style={{ marginBottom: 12 }}>개인용 가상 피팅</p>
 
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
-        <Badge label="Inference" ok={online} okText="online" badText="offline" />
+      <div className="badges">
         <Badge
-          label="Worker"
+          label="합성 서버"
+          ok={online}
+          okText="정상"
+          badText="오프라인"
+        />
+        <Badge
+          label="워커"
           ok={workerLive}
-          okText={hbAge !== null ? `live (${(hbAge / 1000).toFixed(1)}s ago)` : 'live'}
-          badText={hb ? `stale (${((hbAge ?? 0) / 1000).toFixed(0)}s)` : 'never seen'}
+          okText={hbAge !== null ? `정상 (${(hbAge / 1000).toFixed(1)}초 전)` : '정상'}
+          badText={hb ? `중단 (${((hbAge ?? 0) / 1000).toFixed(0)}초)` : '미실행'}
         />
       </div>
 
       {!online && (
-        <Banner color="#fff4e5" border="#ffb84d">
-          Inference 서버가 오프라인입니다. 본인 PC의 uvicorn이 떠 있는지 확인하세요. 업로드/합성이 실패합니다.
-        </Banner>
+        <div className="banner">
+          합성 서버(inference)가 오프라인입니다. PC에서 uvicorn이 실행 중인지 확인하세요. 업로드와 합성이 실패합니다.
+        </div>
       )}
       {online && !workerLive && (
-        <Banner color="#fff4e5" border="#ffb84d">
-          Worker가 떠 있지 않은 것 같습니다. <code>npm run worker</code>를 실행하세요. 큐에 쌓인 작업이 처리되지 않습니다.
-        </Banner>
+        <div className="banner">
+          워커(worker)가 실행 중이지 않습니다. <code>npm run worker</code>를 실행하세요. 큐에 쌓인 작업이 처리되지 않습니다.
+        </div>
       )}
 
       <Uploader people={people} garments={garments} />
 
-      <section style={{ marginTop: 32 }}>
-        <h2>People ({people.length})</h2>
-        <Grid items={people.map(p => ({ id: p.id, url: p.image_url, label: p.label }))} />
+      <section>
+        <h2>등록된 사람 ({people.length})</h2>
+        <Gallery
+          items={people.map(p => ({
+            id: p.id,
+            url: toProxyImageUrl(p.image_url),
+            label: p.label,
+          }))}
+        />
       </section>
 
-      <section style={{ marginTop: 32 }}>
-        <h2>Garments ({garments.length})</h2>
-        <Grid items={garments.map(g => ({ id: g.id, url: g.image_url, label: g.category }))} />
+      <section>
+        <h2>등록된 옷 ({garments.length})</h2>
+        <Gallery
+          items={garments.map(g => ({
+            id: g.id,
+            url: toProxyImageUrl(g.image_url),
+            label: g.category,
+          }))}
+        />
       </section>
 
-      <section style={{ marginTop: 32 }}>
-        <h2>Generations ({generations.length})</h2>
+      <section>
+        <h2>합성 기록 ({generations.length})</h2>
         {generations.length === 0 ? (
-          <p style={{ color: '#888' }}>아직 합성 기록이 없습니다.</p>
+          <p className="muted">아직 합성한 기록이 없습니다.</p>
         ) : (
-          <ul style={{ paddingLeft: 18 }}>
+          <ul className="gen-list">
             {generations.map(g => (
-              <li key={g.id} style={{ marginBottom: 8 }}>
-                <code>{g.id.slice(0, 8)}</code> — <strong>{g.status}</strong>
+              <li key={g.id}>
+                <code>{g.id.slice(0, 8)}</code>
+                <StatusPill status={g.status} />
                 {g.result_url && (
                   <>
-                    {' — '}
-                    <a href={g.result_url} target="_blank" rel="noreferrer">result</a>
+                    {' '}
+                    —{' '}
+                    <a href={toProxyImageUrl(g.result_url)} target="_blank" rel="noreferrer">
+                      결과 보기
+                    </a>
                   </>
                 )}
-                {g.error_message && <span style={{ color: 'crimson' }}> — {g.error_message}</span>}
+                {g.error_message && (
+                  <span className="error" style={{ marginLeft: 6 }}>
+                    — {g.error_message}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
@@ -96,57 +127,42 @@ export default async function Home() {
   );
 }
 
-function Badge({ label, ok, okText, badText }: { label: string; ok: boolean; okText: string; badText: string }) {
+function Badge({
+  label,
+  ok,
+  okText,
+  badText,
+}: {
+  label: string;
+  ok: boolean;
+  okText: string;
+  badText: string;
+}) {
   return (
-    <span
-      style={{
-        padding: '4px 10px',
-        borderRadius: 999,
-        background: ok ? '#e6f4ea' : '#fde7e9',
-        color: ok ? '#137333' : '#a50e0e',
-        fontSize: 13,
-      }}
-    >
+    <span className={`badge ${ok ? 'ok' : 'bad'}`}>
+      <span className="badge-dot" />
       {label}: {ok ? okText : badText}
     </span>
   );
 }
 
-function Banner({ children, color, border }: { children: React.ReactNode; color: string; border: string }) {
-  return (
-    <div
-      style={{
-        background: color,
-        border: `1px solid ${border}`,
-        padding: 12,
-        borderRadius: 8,
-        marginBottom: 16,
-      }}
-    >
-      {children}
-    </div>
-  );
+function StatusPill({ status }: { status: 'queued' | 'running' | 'done' | 'failed' }) {
+  const text = { queued: '대기', running: '처리중', done: '완료', failed: '실패' }[status];
+  return <span className={`status-pill status-${status}`}>{text}</span>;
 }
 
-function Grid({ items }: { items: Array<{ id: string; url: string; label: string | null }> }) {
-  if (items.length === 0) return <p style={{ color: '#888' }}>비어 있음.</p>;
+function Gallery({
+  items,
+}: {
+  items: Array<{ id: string; url: string; label: string | null }>;
+}) {
+  if (items.length === 0) return <p className="muted">아직 없습니다.</p>;
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-        gap: 12,
-      }}
-    >
+    <div className="gallery">
       {items.map(it => (
-        <figure key={it.id} style={{ margin: 0 }}>
-          {/* plain <img> — the URL itself is signed (?t=<read_token>) */}
-          <img
-            src={it.url}
-            alt={it.label ?? it.id}
-            style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 4 }}
-          />
-          <figcaption style={{ fontSize: 12, marginTop: 4 }}>{it.label ?? it.id.slice(0, 8)}</figcaption>
+        <figure key={it.id}>
+          <img src={it.url} alt={it.label ?? it.id} />
+          <figcaption>{it.label ?? it.id.slice(0, 8)}</figcaption>
         </figure>
       ))}
     </div>
