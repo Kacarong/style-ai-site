@@ -6,6 +6,10 @@ from typing import Protocol
 class TryonInput:
     person_bytes: bytes
     garment_bytes: bytes
+    # Free-text garment category (user-entered). Providers may normalize to
+    # their own enum. Mock ignores it; FASHN expects "tops"|"bottoms"|"one-pieces"
+    # and maps Korean/English free text in _normalize_category().
+    category: str | None = None
 
 
 @dataclass

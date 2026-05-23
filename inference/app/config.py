@@ -11,5 +11,14 @@ class Settings(BaseSettings):
     provider: str = "mock"
     fal_key: str = ""
 
+    # FASHN VTON v1.5 (open-source local model). Only used when
+    # PROVIDER=fashn_vton_v15. Defaults match the upstream README's recommended
+    # inference settings.
+    fashn_weights_dir: str = ""
+    fashn_num_timesteps: int = 50
+    fashn_guidance_scale: float = 2.5
+    fashn_seed: int = 42
+    fashn_segmentation_free: bool = False
+
 
 settings = Settings()  # type: ignore[call-arg]

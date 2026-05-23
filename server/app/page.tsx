@@ -17,8 +17,19 @@ interface GenerationRow {
   created_at: number;
 }
 
+const PROVIDER_LABEL: Record<string, string> = {
+  mock: '테스트 모드 (mock)',
+  fashn_vton_v15: '로컬 AI (FASHN VTON v1.5)',
+  fal_kling: 'fal.ai (Kling VTON)',
+};
+
 export default async function Home() {
-  const online = await inferenceHealth();
+  const health = await inferenceHealth();
+  const online = health.online;
+  const providerLabel =
+    health.provider !== null
+      ? PROVIDER_LABEL[health.provider] ?? health.provider
+      : null;
   const d = db();
 
   const people = d
@@ -48,7 +59,7 @@ export default async function Home() {
         <Badge
           label="합성 서버"
           ok={online}
-          okText="정상"
+          okText={providerLabel ? `정상 · ${providerLabel}` : '정상'}
           badText="오프라인"
         />
         <Badge

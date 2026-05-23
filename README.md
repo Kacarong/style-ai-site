@@ -49,14 +49,32 @@ Open http://localhost:3000 and try the upload → compose → poll cycle with `P
 
 ### Switch to real model (FASHN VTON v1.5)
 
-1. Install PyTorch for your GPU:
+Apache-2.0 licensed, ~1.94GB weights, ~8GB VRAM. Runs locally on your GPU — no per-call cost.
+
+1. Install PyTorch for your GPU (must be done **before** `pip install -e .` so it doesn't pull a CPU build):
    ```powershell
+   cd inference
+   .venv\Scripts\activate
    pip install torch --index-url https://download.pytorch.org/whl/cu128
-   # if that fails on sm_120 (Blackwell), try nightly:
+   # if that fails on sm_120 (Blackwell, RTX 50-series), try nightly:
    pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128
    ```
-2. Download FASHN VTON v1.5 weights (see `inference/providers/fashn_vton_v15.py`).
-3. Set `PROVIDER=fashn_vton_v15` in `inference/.env` and restart.
+2. Clone and install the FASHN VTON v1.5 package (in the **same venv** as `inference/`):
+   ```powershell
+   cd C:\dev               # or wherever you keep source checkouts
+   git clone https://github.com/fashn-AI/fashn-vton-1.5.git
+   cd fashn-vton-1.5
+   pip install -e .
+   python scripts\download_weights.py --weights-dir .\weights
+   ```
+3. Edit `inference/.env`:
+   ```
+   PROVIDER=fashn_vton_v15
+   FASHN_WEIGHTS_DIR=C:\dev\fashn-vton-1.5\weights
+   ```
+4. Restart `uvicorn`. First `/tryon` call will take ~20s extra to load weights into VRAM; subsequent calls reuse the cached pipeline.
+
+The "합성 서버" badge in the UI will show `정상 · 로컬 AI (FASHN VTON v1.5)` when the provider switch is live.
 
 ## Production deployment (after local testing passes)
 

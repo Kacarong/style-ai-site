@@ -18,20 +18,23 @@ import { db, setMeta } from './lib/db';
 import { runTryon } from './lib/inference';
 
 const POLL_INTERVAL_MS = 2000;
+const HEARTBEAT_INTERVAL_MS = 2000;
 
 interface QueuedGeneration {
   id: string;
   person_url: string;
   garment_url: string;
+  category: string | null;
 }
 
 async function tick() {
   const d = db();
-  // Heartbeat: write our timestamp every tick so the UI can detect "worker not running".
-  setMeta('worker_heartbeat_at', String(Date.now()));
 
   const row = d.prepare(`
-    SELECT g.id AS id, p.image_url AS person_url, ga.image_url AS garment_url
+    SELECT g.id AS id,
+           p.image_url AS person_url,
+           ga.image_url AS garment_url,
+           ga.category AS category
     FROM generations g
     JOIN people p ON p.id = g.person_id
     JOIN garments ga ON ga.id = g.garment_id
@@ -56,6 +59,7 @@ async function tick() {
       generation_id: row.id,
       person_url: row.person_url,
       garment_url: row.garment_url,
+      category: row.category,
     });
     d.prepare(`
       UPDATE generations
@@ -76,6 +80,20 @@ async function tick() {
 
 async function main() {
   console.log('[worker] started');
+
+  // Decoupled heartbeat: a single tick() call can take 30+ seconds for FASHN
+  // inference, far longer than the UI's "worker stale" threshold. Writing the
+  // heartbeat on its own timer keeps the badge accurate while long inference
+  // calls are in flight.
+  setMeta('worker_heartbeat_at', String(Date.now()));
+  setInterval(() => {
+    try {
+      setMeta('worker_heartbeat_at', String(Date.now()));
+    } catch (e) {
+      console.error('[worker] heartbeat error:', e);
+    }
+  }, HEARTBEAT_INTERVAL_MS);
+
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {

@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from . import storage
 from .auth import require_bearer, verify_read_token
+from .config import settings
 from .providers import TryonInput, get_provider
 
 app = FastAPI(title="style-ai-site inference")
@@ -11,8 +12,11 @@ app = FastAPI(title="style-ai-site inference")
 
 @app.get("/healthz")
 def healthz() -> dict:
-    """Public. Used by the Next.js server to render the online/offline badge."""
-    return {"ok": True}
+    """Public. Used by the Next.js server to render the online/offline badge.
+
+    `provider` lets the UI show which model is wired up (mock vs fashn vs fal).
+    """
+    return {"ok": True, "provider": settings.provider}
 
 
 @app.post("/storage/upload", dependencies=[Depends(require_bearer)])
@@ -48,6 +52,7 @@ class TryonRequest(BaseModel):
     person_url: str
     garment_url: str
     provider: str | None = None  # reserved; uses settings.provider for now
+    category: str | None = None  # free text; FASHN provider maps to its enum
 
 
 class TryonResponse(BaseModel):
@@ -65,7 +70,9 @@ def tryon(req: TryonRequest) -> TryonResponse:
         raise HTTPException(400, str(e))
 
     provider = get_provider()
-    out = provider.run(TryonInput(person_bytes=person, garment_bytes=garment))
+    out = provider.run(
+        TryonInput(person_bytes=person, garment_bytes=garment, category=req.category)
+    )
 
     saved = storage.save_blob(out.result_bytes, "result", content_type=out.content_type)
     return TryonResponse(result_url=saved["url"], model_used=out.model_used, cost_usd=out.cost_usd)

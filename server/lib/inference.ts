@@ -45,6 +45,9 @@ export interface TryonRequest {
   person_url: string;
   garment_url: string;
   provider?: string;
+  // Free-text garment category (e.g. "상의", "tops"). The inference server's
+  // FASHN provider normalizes this to its own enum; mock ignores it.
+  category?: string | null;
 }
 
 export interface TryonResult {
@@ -65,14 +68,21 @@ export async function runTryon(req: TryonRequest): Promise<TryonResult> {
   return res.json();
 }
 
-export async function inferenceHealth(): Promise<boolean> {
+export interface InferenceHealth {
+  online: boolean;
+  provider: string | null;
+}
+
+export async function inferenceHealth(): Promise<InferenceHealth> {
   try {
     const res = await fetch(`${env.INFERENCE_BASE_URL}/healthz`, {
       // /healthz is unauthenticated; short timeout
       signal: AbortSignal.timeout(2000),
     });
-    return res.ok;
+    if (!res.ok) return { online: false, provider: null };
+    const data = (await res.json()) as { ok?: boolean; provider?: string };
+    return { online: data.ok !== false, provider: data.provider ?? null };
   } catch {
-    return false;
+    return { online: false, provider: null };
   }
 }
