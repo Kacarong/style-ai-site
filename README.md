@@ -48,19 +48,19 @@ copy .env.example .env
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Open http://localhost:3000 and try the upload → compose → poll cycle with `PROVIDER=mock`. Mock provider returns the garment image as the "result" — useful to verify the wiring.
+Open http://localhost:3000 and try the upload → compose → poll cycle with `PROVIDER=mock`. The mock provider returns a side-by-side composite of the person and garment (no model work) — useful to verify the upload → queue → worker → result wiring before you set up the real GPU model.
 
 ### Switch to real model (FASHN VTON v1.5)
 
 Apache-2.0 licensed, ~1.94GB weights, ~8GB VRAM. Runs locally on your GPU — no per-call cost.
 
-1. Install PyTorch for your GPU (must be done **before** `pip install -e .` so it doesn't pull a CPU build):
+1. Install PyTorch + torchvision for your GPU (must be done **before** `pip install -e .` so pip doesn't later pull a CPU-only `torchvision` from PyPI and mismatch the CUDA build):
    ```powershell
    cd inference
    .venv\Scripts\activate
-   pip install torch --index-url https://download.pytorch.org/whl/cu128
+   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
    # if that fails on sm_120 (Blackwell, RTX 50-series), try nightly:
-   pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/cu128
+   pip install --pre torch torchvision --index-url https://download.pytorch.org/whl/nightly/cu128
    ```
 2. Clone and install the FASHN VTON v1.5 package (in the **same venv** as `inference/`):
    ```powershell
