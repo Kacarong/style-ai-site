@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'style-ai-site',
+  title: '단홍드',
   description: '개인용 가상 피팅',
 };
 

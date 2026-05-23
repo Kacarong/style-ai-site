@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 
 import { db } from '@/lib/db';
-import { uploadToInference } from '@/lib/inference';
+import { deleteFromInference, uploadToInference } from '@/lib/inference';
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -94,4 +94,62 @@ export async function compose(
 
   revalidatePath('/');
   return { ok: true, generation_id: id };
+}
+
+interface DeleteResult {
+  ok: boolean;
+  error?: string;
+}
+
+async function deleteImage(
+  id: string,
+  kind: 'person' | 'garment',
+): Promise<DeleteResult> {
+  if (!id) return { ok: false, error: 'missing id' };
+  const d = db();
+
+  const table = kind === 'person' ? 'people' : 'garments';
+  const fkColumn = kind === 'person' ? 'person_id' : 'garment_id';
+
+  const row = d
+    .prepare(`SELECT image_url FROM ${table} WHERE id = ?`)
+    .get(id) as { image_url: string } | undefined;
+  if (!row) return { ok: false, error: 'not found' };
+
+  // Cascade: remove generations that reference this photo, plus their result
+  // blobs on inference. Preserving history would require a separate soft-delete
+  // column; for a personal-use MVP, "delete just means delete" is the right UX.
+  const refRows = d
+    .prepare(
+      `SELECT id, result_url FROM generations WHERE ${fkColumn} = ?`,
+    )
+    .all(id) as Array<{ id: string; result_url: string | null }>;
+
+  d.prepare(`DELETE FROM generations WHERE ${fkColumn} = ?`).run(id);
+  d.prepare(`DELETE FROM ${table} WHERE id = ?`).run(id);
+
+  // Best-effort inference cleanup. DB rows are already gone, so failures here
+  // only leave orphan files on disk — they don't strand anything in the UI.
+  const toDelete = [row.image_url, ...refRows.map(r => r.result_url).filter((u): u is string => !!u)];
+  for (const url of toDelete) {
+    try {
+      await deleteFromInference(url);
+    } catch (e) {
+      console.warn(
+        `[delete] inference delete failed for ${kind} ${id} (url=${url}):`,
+        e instanceof Error ? e.message : e,
+      );
+    }
+  }
+
+  revalidatePath('/');
+  return { ok: true };
+}
+
+export async function deletePerson(id: string): Promise<DeleteResult> {
+  return deleteImage(id, 'person');
+}
+
+export async function deleteGarment(id: string): Promise<DeleteResult> {
+  return deleteImage(id, 'garment');
 }

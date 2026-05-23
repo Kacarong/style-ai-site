@@ -48,6 +48,18 @@ h1 {
   margin: 0 0 4px;
 }
 
+/* Centered, large site title (used on the home page). */
+.site-title {
+  font-size: 44px;
+  font-weight: 800;
+  text-align: center;
+  margin: 8px 0 4px;
+}
+.site-subtitle {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
 h2 {
   font-size: 16px;
   font-weight: 600;
@@ -271,6 +283,45 @@ button.primary:hover:not(:disabled) {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
+  position: relative;
+}
+/* Delete (×) overlay on each gallery item. */
+.gallery-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.gallery-delete:hover:not(:disabled) {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+
+/* Inline button styled like a link (used in history list). */
+.link-button {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.link-button:hover:not(:disabled) {
+  background: transparent;
+  text-decoration: underline;
 }
 .gallery img {
   width: 100%;

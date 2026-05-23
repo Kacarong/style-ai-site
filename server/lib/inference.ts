@@ -20,6 +20,38 @@ export interface StorageUploadResult {
   url: string; // signed read URL, includes ?t=<read_token>
 }
 
+/**
+ * Best-effort delete of an inference-side blob by its signed URL.
+ *
+ * The URL is the same one we stored in SQLite; we extract <id> from the path
+ * and DELETE /storage/<id> with Bearer. 404s are swallowed (idempotent: the
+ * file may already be gone). Other errors propagate so callers can decide
+ * whether to surface them.
+ */
+export async function deleteFromInference(signedUrl: string): Promise<void> {
+  let id: string;
+  try {
+    const u = new URL(signedUrl);
+    const parts = u.pathname.split('/').filter(Boolean);
+    if (parts[0] !== 'storage' || !parts[1]) {
+      throw new Error(`not a storage URL: ${signedUrl}`);
+    }
+    id = parts[1];
+  } catch (e) {
+    throw new Error(
+      `cannot parse storage URL: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+
+  const res = await fetch(
+    `${env.INFERENCE_BASE_URL}/storage/${encodeURIComponent(id)}`,
+    { method: 'DELETE', headers: authHeaders() },
+  );
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`inference delete failed: ${res.status} ${await res.text()}`);
+  }
+}
+
 export async function uploadToInference(
   file: Blob,
   filename: string,

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { toProxyImageUrl } from '@/lib/image-url';
 import { compose, uploadGarment, uploadPerson } from './actions';
+import DownloadButton from './download-button';
 
 export interface PersonLite {
   id: string;
@@ -181,7 +182,15 @@ export default function Uploader({
               <p className="error">{status.error_message}</p>
             )}
             {status?.status === 'done' && status.result_url && (
-              <img src={toProxyImageUrl(status.result_url)} alt="합성 결과" />
+              <>
+                <img src={toProxyImageUrl(status.result_url)} alt="합성 결과" />
+                <div style={{ marginTop: 12 }}>
+                  <DownloadButton
+                    url={toProxyImageUrl(status.result_url)}
+                    filename={`danhongd-${activeId?.slice(0, 8) ?? 'result'}.png`}
+                  />
+                </div>
+              </>
             )}
           </div>
         )}

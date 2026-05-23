@@ -60,6 +60,23 @@ def load_blob_path(item_id: str) -> Path | None:
     return bin_path if bin_path.is_file() else None
 
 
+def delete_blob(item_id: str) -> bool:
+    """Remove blob + sidecar. Returns True if anything was deleted.
+
+    Idempotent: missing files are not an error (the site may retry on transient
+    failures, or the user may delete a row whose blob was already cleaned up).
+    """
+    bin_path, side_path = _paths(item_id)
+    removed = False
+    if bin_path.is_file():
+        bin_path.unlink()
+        removed = True
+    if side_path.is_file():
+        side_path.unlink()
+        removed = True
+    return removed
+
+
 def fetch_signed_url_bytes(url: str) -> bytes:
     """
     Read a previously-issued signed URL back as bytes by going through the

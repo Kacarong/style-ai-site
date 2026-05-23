@@ -30,6 +30,13 @@ async def upload(
     return storage.save_blob(data, kind, content_type=file.content_type)  # type: ignore[arg-type]
 
 
+@app.delete("/storage/{item_id}", dependencies=[Depends(require_bearer)])
+def delete(item_id: str) -> dict:
+    """Remove blob + sidecar. Idempotent — returns 200 even if already gone."""
+    removed = storage.delete_blob(item_id)
+    return {"id": item_id, "removed": removed}
+
+
 @app.get("/storage/{item_id}")
 def serve(item_id: str, t: str = Query(...)) -> FileResponse:
     """

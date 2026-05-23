@@ -1,6 +1,9 @@
 import { db, getMeta } from '@/lib/db';
 import { toProxyImageUrl } from '@/lib/image-url';
 import { inferenceHealth } from '@/lib/inference';
+import { deleteGarment, deletePerson } from './actions';
+import DeletableGallery from './deletable-gallery';
+import DownloadButton from './download-button';
 import Uploader, { GarmentLite, PersonLite } from './uploader';
 
 export const dynamic = 'force-dynamic';
@@ -52,8 +55,8 @@ export default async function Home() {
 
   return (
     <main>
-      <h1>style-ai-site</h1>
-      <p className="muted" style={{ marginBottom: 12 }}>개인용 가상 피팅</p>
+      <h1 className="site-title">단홍드</h1>
+      <p className="muted site-subtitle">개인용 가상 피팅</p>
 
       <div className="badges">
         <Badge
@@ -85,23 +88,27 @@ export default async function Home() {
 
       <section>
         <h2>등록된 사람 ({people.length})</h2>
-        <Gallery
+        <DeletableGallery
           items={people.map(p => ({
             id: p.id,
             url: toProxyImageUrl(p.image_url),
             label: p.label,
           }))}
+          onDelete={deletePerson}
+          emptyText="아직 없습니다."
         />
       </section>
 
       <section>
         <h2>등록된 옷 ({garments.length})</h2>
-        <Gallery
+        <DeletableGallery
           items={garments.map(g => ({
             id: g.id,
             url: toProxyImageUrl(g.image_url),
             label: g.category,
           }))}
+          onDelete={deleteGarment}
+          emptyText="아직 없습니다."
         />
       </section>
 
@@ -122,6 +129,15 @@ export default async function Home() {
                     <a href={toProxyImageUrl(g.result_url)} target="_blank" rel="noreferrer">
                       결과 보기
                     </a>
+                    <span style={{ marginLeft: 8 }}>
+                      <DownloadButton
+                        url={toProxyImageUrl(g.result_url)}
+                        filename={`danhongd-${g.id.slice(0, 8)}.png`}
+                        className="link-button"
+                      >
+                        저장
+                      </DownloadButton>
+                    </span>
                   </>
                 )}
                 {g.error_message && (
@@ -160,22 +176,4 @@ function Badge({
 function StatusPill({ status }: { status: 'queued' | 'running' | 'done' | 'failed' }) {
   const text = { queued: '대기', running: '처리중', done: '완료', failed: '실패' }[status];
   return <span className={`status-pill status-${status}`}>{text}</span>;
-}
-
-function Gallery({
-  items,
-}: {
-  items: Array<{ id: string; url: string; label: string | null }>;
-}) {
-  if (items.length === 0) return <p className="muted">아직 없습니다.</p>;
-  return (
-    <div className="gallery">
-      {items.map(it => (
-        <figure key={it.id}>
-          <img src={it.url} alt={it.label ?? it.id} />
-          <figcaption>{it.label ?? it.id.slice(0, 8)}</figcaption>
-        </figure>
-      ))}
-    </div>
-  );
 }
