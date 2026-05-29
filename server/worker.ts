@@ -25,6 +25,7 @@ interface QueuedGeneration {
   person_url: string;
   garment_url: string;
   category: string | null;
+  photo_type: string | null;
 }
 
 async function tick() {
@@ -34,7 +35,8 @@ async function tick() {
     SELECT g.id AS id,
            p.image_url AS person_url,
            ga.image_url AS garment_url,
-           ga.category AS category
+           ga.category AS category,
+           ga.photo_type AS photo_type
     FROM generations g
     JOIN people p ON p.id = g.person_id
     JOIN garments ga ON ga.id = g.garment_id
@@ -55,11 +57,16 @@ async function tick() {
 
   console.log(`[worker] running generation ${row.id}`);
   try {
+    // NULL photo_type → 'flat-lay' to match the prior global default. This
+    // preserves behavior for garments uploaded before the per-row column existed.
+    const garmentPhotoType: 'flat-lay' | 'model' =
+      row.photo_type === 'model' ? 'model' : 'flat-lay';
     const result = await runTryon({
       generation_id: row.id,
       person_url: row.person_url,
       garment_url: row.garment_url,
       category: row.category,
+      garment_photo_type: garmentPhotoType,
     });
     d.prepare(`
       UPDATE generations

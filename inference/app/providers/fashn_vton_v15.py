@@ -95,12 +95,15 @@ class FashnVtonV15Provider(Provider):
         person_img = Image.open(io.BytesIO(inp.person_bytes)).convert("RGB")
         garment_img = Image.open(io.BytesIO(inp.garment_bytes)).convert("RGB")
         category = _normalize_category(inp.category)
+        # Per-request override wins; otherwise fall back to the global .env default.
+        # Validation of the enum happened in main.py before we got here.
+        garment_photo_type = inp.garment_photo_type or settings.fashn_garment_photo_type
 
         result = pipe(
             person_image=person_img,
             garment_image=garment_img,
             category=category,
-            garment_photo_type=settings.fashn_garment_photo_type,
+            garment_photo_type=garment_photo_type,
             num_samples=1,
             num_timesteps=settings.fashn_num_timesteps,
             guidance_scale=settings.fashn_guidance_scale,

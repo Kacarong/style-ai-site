@@ -51,6 +51,19 @@ function migrate(d: Database.Database) {
       updated_at INTEGER NOT NULL
     );
   `);
+
+  // Additive migration: garments.photo_type. Tells FASHN whether the upload is
+  // a flat lay of the garment alone or a photo of someone/mannequin wearing it.
+  // Pre-existing rows get NULL; the worker treats NULL as 'flat-lay' (the prior
+  // global default) so old garments behave exactly as before.
+  if (!hasColumn(d, 'garments', 'photo_type')) {
+    d.exec(`ALTER TABLE garments ADD COLUMN photo_type TEXT`);
+  }
+}
+
+function hasColumn(d: Database.Database, table: string, column: string): boolean {
+  const rows = d.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  return rows.some(r => r.name === column);
 }
 
 export function setMeta(key: string, value: string) {

@@ -80,6 +80,9 @@ export interface TryonRequest {
   // Free-text garment category (e.g. "상의", "tops"). The inference server's
   // FASHN provider normalizes this to its own enum; mock ignores it.
   category?: string | null;
+  // Per-request override of FASHN's garment_photo_type. The inference server
+  // falls back to its .env default when this is null/undefined.
+  garment_photo_type?: 'flat-lay' | 'model' | null;
 }
 
 export interface TryonResult {

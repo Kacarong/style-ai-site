@@ -124,6 +124,19 @@ export default function Uploader({
               {garmentPending ? '업로드 중…' : '업로드'}
             </button>
           </div>
+          {/* photo_type tells FASHN how to read the upload: flat-lay = item only
+              on a flat surface, model = item being worn by a person/mannequin.
+              Picking the wrong one noticeably degrades synthesis quality. */}
+          <div className="row" style={{ marginTop: 8 }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <input type="radio" name="photo_type" value="flat-lay" defaultChecked />
+              옷만 찍은 사진
+            </label>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <input type="radio" name="photo_type" value="model" />
+              사람·마네킹 착용 사진
+            </label>
+          </div>
         </form>
         {garmentState.error && <p className="error">{garmentState.error}</p>}
       </section>

@@ -60,6 +60,9 @@ class TryonRequest(BaseModel):
     garment_url: str
     provider: str | None = None  # reserved; uses settings.provider for now
     category: str | None = None  # free text; FASHN provider maps to its enum
+    # Per-request override of FASHN garment_photo_type. Accepts "flat-lay" or
+    # "model". When None, provider uses settings.fashn_garment_photo_type.
+    garment_photo_type: str | None = None
 
 
 class TryonResponse(BaseModel):
@@ -76,9 +79,17 @@ def tryon(req: TryonRequest) -> TryonResponse:
     except ValueError as e:
         raise HTTPException(400, str(e))
 
+    if req.garment_photo_type is not None and req.garment_photo_type not in ("flat-lay", "model"):
+        raise HTTPException(400, "garment_photo_type must be 'flat-lay' or 'model'")
+
     provider = get_provider()
     out = provider.run(
-        TryonInput(person_bytes=person, garment_bytes=garment, category=req.category)
+        TryonInput(
+            person_bytes=person,
+            garment_bytes=garment,
+            category=req.category,
+            garment_photo_type=req.garment_photo_type,
+        )
     )
 
     saved = storage.save_blob(out.result_bytes, "result", content_type=out.content_type)

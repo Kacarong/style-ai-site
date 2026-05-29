@@ -46,9 +46,15 @@ async function uploadImage(
   } else {
     const category = (formData.get('category') as string | null) ?? null;
     const note = (formData.get('note') as string | null) ?? null;
+    // photo_type: 'flat-lay' (item only) or 'model' (worn by person/mannequin).
+    // Anything else (missing/blank/garbage) is stored as NULL; the worker maps
+    // NULL → 'flat-lay' to match the prior global default.
+    const rawPhotoType = (formData.get('photo_type') as string | null) ?? null;
+    const photoType =
+      rawPhotoType === 'flat-lay' || rawPhotoType === 'model' ? rawPhotoType : null;
     db().prepare(
-      'INSERT INTO garments (id, image_url, category, note, created_at) VALUES (?, ?, ?, ?, ?)',
-    ).run(id, stored.url, category, note, now);
+      'INSERT INTO garments (id, image_url, category, note, photo_type, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    ).run(id, stored.url, category, note, photoType, now);
   }
 
   revalidatePath('/');
